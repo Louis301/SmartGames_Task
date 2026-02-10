@@ -1,4 +1,3 @@
-- интерпретатор Lua5.5
-- запуск:
-  lua55 .\main.lua    // на Windows 10
-  
+- Windows 10
+- Lua5.5
+- lua55 .\main.lua
