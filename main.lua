@@ -1,26 +1,32 @@
 
 -- для рандомизации пермешивания ячеек
-math.randomseed(os.time())
+math.randomseed(os.time())    -- рандомизация заполнения игрового поля 
 
 -- базовый класс игры
 local Game = {}
 Game.__index = Game
 
 -- параметры игрового поля
-local COLORS = {'A', 'B', 'C', 'D', 'E', 'F'}
-local SIZE = 10
+local COLORS = {'A', 'B', 'C', 'D', 'E', 'F'}   -- таблица камней
+local SIZE = 3  -- порядок игрового поля
 
 
 -------------------------------------------------- // инициализация игрового поля
 function Game:init()
   -- Инициализация случайными цветами --
-  self.field = {}           
-  for y = 1, SIZE do
-     self.field[y] = {}
-     for x = 1, SIZE do
-       self.field[y][x] = COLORS[math.random(#COLORS)]
-     end
-  end
+  -- self.field = {}          -- создание свойства field таблицы типа списка   
+  -- for y = 1, SIZE do     -- прогон по вертикали от 1 до SIZE, включительно
+  --    self.field[y] = {}
+  --    for x = 1, SIZE do    -- прогон по горизонтали
+  --      self.field[y][x] = COLORS[math.random(#COLORS)]
+  --    end
+  -- end
+
+  self.field = {
+      {'A','E','A'},
+      {'B','A','D'},
+      {'C','B','A'}
+  }
 
 -- Статическая инициализация по ТЗ --
 -- self.field = {
@@ -36,7 +42,7 @@ function Game:init()
 --   {'B','A','B','C','D','E','F','A','B','C'}
 -- }
 
-  -- проверка наличия тройки при генерации
+  -- проверка наличия тройки при генерации (необходимо для возможности хода)
   while self:_has_any_match() do
     self:mix()
   end
@@ -72,14 +78,14 @@ function Game:move(x1, y1, x2, y2)
 
   -- проверка вхождения в поле
   if not (r1 >= 1 and r1 <= SIZE and c1 >= 1 and c1 <= SIZE and r2 >= 1 and r2 <= SIZE and c2 >= 1 and c2 <= SIZE) then
-    return false
+    return false     -- если НЕ входит в LUA-диапазон
   end
 
   -- проверка соседних клеток
   local dr = math.abs(r1 - r2)
   local dc = math.abs(c1 - c2)
-  if not ((dr == 1 and dc == 0) or (dr == 0 and dc == 1)) then
-    return false
+  if not ((dr == 1 and dc == 0) or (dr == 0 and dc == 1)) then 
+    return false        -- если клетки НЕ находятся рядом (проверка по дельтам)
   end
 
   -- обмен ячейками
@@ -112,21 +118,22 @@ function Game:tick()
 
   for _, group in ipairs(matches) do
     for _, pos in ipairs(group) do
-      to_remove[pos.y][pos.x] = true
+      to_remove[pos.y][pos.x] = true    -- удаляем тройки по координатам group, устанавливая флаги true в таблице удаления
     end
   end
+
   -- сдвиг столбцов вниз
-  for x = 1, SIZE do
-    local write_pos = SIZE
+  for x = 1, SIZE do    -- прогон по столбцам
+    local write_pos = SIZE    -- позиция изменяемого кристалла
     for y = SIZE, 1, -1 do
       if not to_remove[y][x] then
-        self.field[write_pos][x] = self.field[y][x]
-        write_pos = write_pos - 1
+        self.field[write_pos][x] = self.field[y][x]  -- оставляем кристалл
+        write_pos = write_pos - 1                      
       end
     end
     -- заполнение новыми камнями
     while write_pos >= 1 do
-      self.field[write_pos][x] = COLORS[math.random(#COLORS)]
+      self.field[write_pos][x] = COLORS[math.random(#COLORS)]   -- вставка нового кристалла в область удаляемой тройки
       write_pos = write_pos - 1
     end
   end
@@ -139,10 +146,10 @@ function Game:mix()
   repeat
     for y = 1, SIZE do
       for x = 1, SIZE do
-        self.field[y][x] = COLORS[math.random(#COLORS)]
+        self.field[y][x] = COLORS[math.random(#COLORS)]  -- обновляем игровое поле..
       end
     end
-  until not self:_has_any_match()
+  until not self:_has_any_match()  -- ..пока field не будет содержать тройку
 end
 
 
@@ -172,11 +179,11 @@ function Game:_find_all_matches()
       end
     end
     if count >= 3 then
-      local group = {}
+      local group = {}    -- подготовка группы индексов криставллов замены
       for i = 0, count - 1 do
         table.insert(group, {x = start_x + i, y = y})
       end
-      table.insert(matches, group)
+      table.insert(matches, group)   -- добавление группы в общюю таблицу групп (троек может быть несколько после хода)
     end
   end
 
@@ -215,7 +222,7 @@ end
 
 -- проверка хотя бы одной тройки
 function Game:_has_any_match()
-  return #self:_find_all_matches() > 0
+  return #self:_find_all_matches() > 0   -- возврат количества обнаруженных троек (таблицы индексов для обновления field)
 end
 
 -- проверка валидности хода
@@ -264,7 +271,7 @@ game:init()
 os.execute("cls")
 
 while true do
-  if not game:_has_valid_move() then
+  if not game:_has_valid_move() then    -- если после удаления тройки и замены новыми кристалами нет доступных ходов - перемешиваем поле
     game:mix()
   end
 
@@ -294,7 +301,7 @@ while true do
       if x2 >= 0 and x2 < SIZE and y2 >= 0 and y2 < SIZE then
         if game:move(x, y, x2, y2) then
           while game:tick() do
-            --game:dump()
+            game:dump()    -- печать поля после каждой замены (удаления) тройки
           end
         else
           print("The move is unacceptable (does not create a triple)\n")
